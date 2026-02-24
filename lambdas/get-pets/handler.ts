@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { successResponse, errorResponse } from '../common/response';
-import { maybeSimulateError } from '../common/error-simulation';
-import { PETS } from '../common/data/pets';
+import { successResponse, errorResponse } from '../../lib/response';
+import { maybeSimulateError } from '../../lib/error-simulation';
+import { PETS } from '../../lib/data/pets';
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {

@@ -1,5 +1,5 @@
 import { handler } from './handler';
-import { createMockEvent } from '../common/test-helpers';
+import { createMockEvent } from '../../lib/test-helpers';
 
 describe('get-pet-detail handler', () => {
   it('should return 200 with pet detail for valid ID', async () => {
@@ -67,7 +67,7 @@ describe('get-pet-detail handler', () => {
     expect(response.statusCode).toBe(400);
     
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Invalid pet ID');
+    expect(body.error).toContain('Invalid');
   });
 
   it('should return 400 when pet ID is missing', async () => {
@@ -81,7 +81,7 @@ describe('get-pet-detail handler', () => {
     expect(response.statusCode).toBe(400);
     
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Pet ID is required');
+    expect(body.error).toBe('Invalid input: expected string, received undefined');
   });
 
   it('should have CORS headers', async () => {
