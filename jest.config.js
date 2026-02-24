@@ -1,9 +1,14 @@
 module.exports = {
+  preset: 'ts-jest',
   testEnvironment: 'node',
-  roots: ['<rootDir>/test'],
+  roots: ['<rootDir>/lambdas'],
   testMatch: ['**/*.test.ts'],
-  transform: {
-    '^.+\\.tsx?$': 'ts-jest'
-  },
-  setupFilesAfterEnv: ['aws-cdk-lib/testhelpers/jest-autoclean'],
+  collectCoverageFrom: [
+    'lambdas/**/*.ts',
+    '!lambdas/**/*.test.ts',
+    '!lambdas/**/types.ts',
+    '!lambdas/**/test-helpers.ts',
+    '!lambdas/common/data/**'
+  ],
+  setupFiles: ['<rootDir>/jest.setup.js']
 };

@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/online-zoo.ts",
+  "app": "npx ts-node --prefer-ts-exts cdk/deploy.ts",
   "watch": {
     "include": [
       "**"
