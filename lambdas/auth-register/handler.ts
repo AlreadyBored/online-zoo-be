@@ -1,7 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse } from '../common/response';
 import { signToken } from '../common/auth-utils';
-import type { RegisterPayload } from '../common/types';
+import { registerSchema } from '../common/validation-schemas';
+import { ZodError } from 'zod';
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -9,34 +10,17 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return errorResponse(400, 'Request body is required');
     }
 
-    const payload: RegisterPayload = JSON.parse(event.body);
+    const body = JSON.parse(event.body);
 
-    // Validation
-    const { login, password, name, email } = payload;
-
-    if (!login || !password || !name || !email) {
-      return errorResponse(400, 'All fields are required: login, password, name, email');
+    // Validate with Zod schema
+    const validationResult = registerSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+      return errorResponse(400, errors);
     }
 
-    // Login validation: min 3 chars, starts with letter, only English letters
-    if (login.length < 3 || !/^[A-Za-z][A-Za-z]*$/.test(login)) {
-      return errorResponse(400, 'Login must be at least 3 characters, start with a letter, and contain only English letters');
-    }
-
-    // Password validation: min 6 chars, at least 1 special character
-    if (password.length < 6 || !/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      return errorResponse(400, 'Password must be at least 6 characters and contain at least 1 special character');
-    }
-
-    // Name validation: min 3 chars, only English letters and spaces
-    if (name.length < 3 || !/^[A-Za-z\s]+$/.test(name)) {
-      return errorResponse(400, 'Name must be at least 3 characters and contain only English letters and spaces');
-    }
-
-    // Email validation: basic format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return errorResponse(400, 'Invalid email format');
-    }
+    const { login, password, name, email } = validationResult.data;
 
     // Create JWT (no actual database persistence - user info is self-contained in JWT)
     const token = signToken({ login, name, email });

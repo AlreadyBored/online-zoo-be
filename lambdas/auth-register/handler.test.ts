@@ -56,7 +56,8 @@ describe('auth-register handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('All fields are required: login, password, name, email');
+    expect(body.error).toContain('name');
+    expect(body.error).toContain('email');
   });
 
   it('should return 400 for login less than 3 characters', async () => {
@@ -189,7 +190,7 @@ describe('auth-register handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Invalid email format');
+    expect(body.error).toContain('Invalid email format');
   });
 
   it('should have CORS headers', async () => {

@@ -52,7 +52,8 @@ describe('donate handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('All fields are required: name, email, amount, petId');
+    expect(body.error).toContain('email');
+    expect(body.error).toContain('petId');
   });
 
   it('should return 400 when amount is negative', async () => {
@@ -71,7 +72,7 @@ describe('donate handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Amount must be a positive number');
+    expect(body.error).toContain('positive');
   });
 
   it('should return 400 when amount is zero', async () => {
@@ -90,7 +91,7 @@ describe('donate handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Amount must be a positive number');
+    expect(body.error).toContain('positive');
   });
 
   it('should return 400 when amount is not a number', async () => {
@@ -109,7 +110,8 @@ describe('donate handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Amount must be a positive number');
+    expect(body.error).toContain('amount');
+    expect(body.error).toContain('expected number');
   });
 
   it('should return 400 when petId is not a number', async () => {
@@ -128,7 +130,8 @@ describe('donate handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Invalid petId');
+    expect(body.error).toContain('petId');
+    expect(body.error).toContain('expected number');
   });
 
   it('should return 404 when pet does not exist', async () => {

@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse } from '../common/response';
 import { maybeSimulateError } from '../common/error-simulation';
 import { DETAILS } from '../common/data/details';
+import { petDetailParamsSchema } from '../common/validation-schemas';
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
@@ -9,15 +10,19 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     const simulatedError = maybeSimulateError();
     if (simulatedError) return simulatedError;
 
-    const petId = event.pathParameters?.id;
-    if (!petId) {
+    if (!event.pathParameters?.id) {
       return errorResponse(400, 'Pet ID is required');
     }
 
-    const id = parseInt(petId, 10);
-    if (isNaN(id)) {
-      return errorResponse(400, 'Invalid pet ID');
+    // Validate with Zod schema
+    const validationResult = petDetailParamsSchema.safeParse({ id: event.pathParameters.id });
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((err: any) => err.message).join(', ');
+      return errorResponse(400, errors);
     }
+
+    const id = validationResult.data.id;
 
     const petDetail = DETAILS.find((detail) => detail.id === id);
     if (!petDetail) {

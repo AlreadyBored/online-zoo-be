@@ -67,7 +67,7 @@ describe('get-pet-detail handler', () => {
     expect(response.statusCode).toBe(400);
     
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Invalid pet ID');
+    expect(body.error).toContain('Invalid');
   });
 
   it('should return 400 when pet ID is missing', async () => {

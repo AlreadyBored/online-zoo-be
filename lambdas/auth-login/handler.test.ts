@@ -51,7 +51,8 @@ describe('auth-login handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Login and password are required');
+    expect(body.error).toContain('login');
+    expect(body.error).toContain('expected string');
   });
 
   it('should return 400 when password is missing', async () => {
@@ -67,7 +68,8 @@ describe('auth-login handler', () => {
     
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
-    expect(body.error).toBe('Login and password are required');
+    expect(body.error).toContain('password');
+    expect(body.error).toContain('expected string');
   });
 
   it('should return 401 for incorrect login', async () => {

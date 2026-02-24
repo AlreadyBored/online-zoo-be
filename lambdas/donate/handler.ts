@@ -2,7 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse } from '../common/response';
 import { maybeSimulateError } from '../common/error-simulation';
 import { PETS } from '../common/data/pets';
-import type { DonationPayload } from '../common/types';
+import { donationSchema } from '../common/validation-schemas';
 import { randomUUID } from 'crypto';
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
@@ -15,21 +15,17 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       return errorResponse(400, 'Request body is required');
     }
 
-    const payload: DonationPayload = JSON.parse(event.body);
-    const { name, email, amount, petId } = payload;
+    const body = JSON.parse(event.body);
 
-    // Validation
-    if (!name || !email || amount === undefined || petId === undefined) {
-      return errorResponse(400, 'All fields are required: name, email, amount, petId');
+    // Validate with Zod schema
+    const validationResult = donationSchema.safeParse(body);
+    
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ');
+      return errorResponse(400, errors);
     }
 
-    if (typeof amount !== 'number' || amount <= 0) {
-      return errorResponse(400, 'Amount must be a positive number');
-    }
-
-    if (typeof petId !== 'number') {
-      return errorResponse(400, 'Invalid petId');
-    }
+    const { name, email, amount, petId } = validationResult.data;
 
     // Check if pet exists
     const pet = PETS.find((p) => p.id === petId);
