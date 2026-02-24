@@ -1,0 +1,32 @@
+import type { Camera } from '../types';
+
+export const CAMERAS: Camera[] = [
+  { id: 1, petId: 1, text: "Watch live from China's Panda Center" },
+  { id: 2, petId: 5, text: "Watch The Bald Eagles Nest from West End cam" },
+  { id: 3, petId: 3, text: "Livestream from Gorilla Forest Corridor habitat cam" },
+  { id: 4, petId: 2, text: "The ring-tailed lemurs play in Madagascar, Lemuria Land" },
+  { id: 5, petId: 4, text: "Watch Mike the Chinese Alligator in his protected habitat" },
+  { id: 6, petId: 6, text: "Watch Liz the Australian Koala in the elevated walkways" },
+  { id: 7, petId: 7, text: "Livestream of Shake the African Lion roaming the savanna" },
+  { id: 8, petId: 8, text: "Watch Senja the Sumatran Tiger from Indonesia" },
+  { id: 9, petId: 9, text: "Watch Bella the Red Panda in the Himalayan habitat" },
+  { id: 10, petId: 10, text: "Livestream of Rocky the Mountain Gorilla in Central Africa" },
+  { id: 11, petId: 11, text: "Watch Zara the African Elephant in the grasslands" },
+  { id: 12, petId: 12, text: "Watch Neptune the Sea Otter playing in the kelp forest" },
+  { id: 13, petId: 13, text: "Livestream of Amber the Bengal Tiger from India" },
+  { id: 14, petId: 14, text: "Watch Duke the Gray Wolf hunting with his pack" },
+  { id: 15, petId: 15, text: "Watch Sunny the Fennec Fox in the Sahara Desert habitat" },
+  { id: 16, petId: 16, text: "Livestream of Koda the Grizzly Bear fishing for salmon" },
+  { id: 17, petId: 17, text: "Watch Marina the Bottlenose Dolphin in the marine sanctuary" },
+  { id: 18, petId: 18, text: "Watch Oscar the Snow Leopard in the mountain habitat" },
+  { id: 19, petId: 19, text: "Livestream of Pearl the Polar Bear in the Arctic environment" },
+  { id: 20, petId: 20, text: "Watch Jasper the Jaguar in the Americas rainforest" },
+  { id: 21, petId: 21, text: "Watch Willow the Ring-Tailed Lemur from Madagascar" },
+  { id: 22, petId: 22, text: "Livestream of Thunder the White Rhinoceros in African savanna" },
+  { id: 23, petId: 23, text: "Watch Luna the Arctic Fox in the tundra landscape" },
+  { id: 24, petId: 24, text: "Watch Atlas the Saltwater Crocodile in Southeast Asia" },
+  { id: 25, petId: 25, text: "Livestream of Ruby the Scarlet Macaw in the rainforest" },
+  { id: 26, petId: 26, text: "Watch Titan the Komodo Dragon on the Indonesian islands" },
+  { id: 27, petId: 27, text: "Watch Olive the Sloth in the Central American forest" },
+  { id: 28, petId: 28, text: "Livestream of Blaze the Cheetah on the African plains" }
+];
