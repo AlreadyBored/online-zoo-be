@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib/core';
-import { OnlineZooStack } from '../lib/online-zoo-stack';
+import { OnlineZooStack } from './stack';
 
 const app = new cdk.App();
 new OnlineZooStack(app, 'OnlineZooStack', {
