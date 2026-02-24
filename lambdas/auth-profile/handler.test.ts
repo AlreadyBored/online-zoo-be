@@ -1,6 +1,6 @@
 import { handler } from './handler';
-import { createMockEvent } from '../common/test-helpers';
-import { signToken } from '../common/auth-utils';
+import { createMockEvent } from '../../lib/test-helpers';
+import { signToken } from '../../lib/auth-utils';
 
 describe('auth-profile handler', () => {
   it('should return user profile with valid token', async () => {

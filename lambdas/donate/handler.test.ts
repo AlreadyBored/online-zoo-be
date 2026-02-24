@@ -1,5 +1,5 @@
 import { handler } from './handler';
-import { createMockEvent } from '../common/test-helpers';
+import { createMockEvent } from '../../lib/test-helpers';
 
 describe('donate handler', () => {
   it('should process donation with valid data', async () => {

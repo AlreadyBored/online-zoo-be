@@ -1,5 +1,5 @@
 import { handler } from './handler';
-import { createMockEvent } from '../common/test-helpers';
+import { createMockEvent } from '../../lib/test-helpers';
 
 describe('auth-login handler', () => {
   it('should login with valid credentials', async () => {

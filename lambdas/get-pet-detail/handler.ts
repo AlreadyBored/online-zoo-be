@@ -1,37 +1,26 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { successResponse, errorResponse } from '../common/response';
-import { maybeSimulateError } from '../common/error-simulation';
-import { DETAILS } from '../common/data/details';
-import { petDetailParamsSchema } from '../common/validation-schemas';
+import { APIGatewayProxyResult } from 'aws-lambda';
+import { successResponse, errorResponse } from '../../lib/response';
+import { maybeSimulateError } from '../../lib/error-simulation';
+import { DETAILS } from '../../lib/data/details';
+import { petDetailParamsSchema, PetDetailParams } from '../../lib/validation-schemas';
+import { withValidation, ValidatedEvent } from '../../lib/validation-middleware';
 
-export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
-  try {
-    // Error simulation
-    const simulatedError = maybeSimulateError();
-    if (simulatedError) return simulatedError;
+async function getPetDetailHandler(event: ValidatedEvent<any, PetDetailParams>): Promise<APIGatewayProxyResult> {
+  // Error simulation
+  const simulatedError = maybeSimulateError();
+  if (simulatedError) return simulatedError;
 
-    if (!event.pathParameters?.id) {
-      return errorResponse(400, 'Pet ID is required');
-    }
+  const id = event.validatedParams!.id;
 
-    // Validate with Zod schema
-    const validationResult = petDetailParamsSchema.safeParse({ id: event.pathParameters.id });
-    
-    if (!validationResult.success) {
-      const errors = validationResult.error.issues.map((err: any) => err.message).join(', ');
-      return errorResponse(400, errors);
-    }
-
-    const id = validationResult.data.id;
-
-    const petDetail = DETAILS.find((detail) => detail.id === id);
-    if (!petDetail) {
-      return errorResponse(404, `Pet with ID ${id} not found`);
-    }
-
-    return successResponse(200, { data: petDetail });
-  } catch (error) {
-    console.error('Error in get-pet-detail handler:', error);
-    return errorResponse(500, 'Internal server error');
+  const petDetail = DETAILS.find((detail) => detail.id === id);
+  if (!petDetail) {
+    return errorResponse(404, `Pet with ID ${id} not found`);
   }
+
+  return successResponse(200, { data: petDetail });
 }
+
+export const handler = withValidation(
+  { paramsSchema: petDetailParamsSchema },
+  getPetDetailHandler
+);

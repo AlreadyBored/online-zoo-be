@@ -1,5 +1,5 @@
 import { handler } from './handler';
-import { createMockEvent } from '../common/test-helpers';
+import { createMockEvent } from '../../lib/test-helpers';
 
 describe('get-pets handler', () => {
   it('should return 200 with list of pets', async () => {

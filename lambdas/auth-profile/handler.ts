@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { successResponse, errorResponse } from '../common/response';
-import { extractToken, verifyToken } from '../common/auth-utils';
+import { successResponse, errorResponse } from '../../lib/response';
+import { extractToken, verifyToken } from '../../lib/auth-utils';
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   try {
