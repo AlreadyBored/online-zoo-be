@@ -18,6 +18,10 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
           cameras: {
             'GET /cameras': 'Get all camera information',
           },
+          docs: {
+            'GET /docs': 'Swagger UI documentation',
+            'GET /docs/openapi.json': 'OpenAPI specification (JSON)',
+          },
           auth: {
             'POST /auth/register': 'Register a new user (returns JWT)',
             'POST /auth/login': 'Login user (returns JWT)',
