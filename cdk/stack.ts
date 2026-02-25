@@ -104,6 +104,13 @@ export class OnlineZooStack extends cdk.Stack {
       functionName: 'online-zoo-donate',
     });
 
+    const docsLambda = new lambdaNodejs.NodejsFunction(this, 'DocsLambda', {
+      ...commonLambdaProps,
+      entry: path.join(__dirname, '../lambdas/docs/handler.ts'),
+      handler: 'handler',
+      functionName: 'online-zoo-docs',
+    });
+
     // API Gateway Routes
 
     // GET / - API info
@@ -141,6 +148,13 @@ export class OnlineZooStack extends cdk.Stack {
     const donationsResource = api.root.addResource('donations');
     donationsResource.addMethod('POST', new apigateway.LambdaIntegration(donateLambda));
 
+    // /docs
+    const docsResource = api.root.addResource('docs');
+    docsResource.addMethod('GET', new apigateway.LambdaIntegration(docsLambda));
+
+    const openApiResource = docsResource.addResource('openapi.json');
+    openApiResource.addMethod('GET', new apigateway.LambdaIntegration(docsLambda));
+
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', {
       value: api.url,
@@ -150,6 +164,11 @@ export class OnlineZooStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiId', {
       value: api.restApiId,
       description: 'API Gateway ID',
+    });
+
+    new cdk.CfnOutput(this, 'DocsUrl', {
+      value: `${api.url}docs`,
+      description: 'Swagger UI URL',
     });
   }
 }

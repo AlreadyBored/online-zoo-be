@@ -77,9 +77,10 @@ After deployment, CDK will output:
 Outputs:
 OnlineZooStack.OnlineZooApiUrl = https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/
 OnlineZooStack.OnlineZooApiId = xxxxxxxx
+OnlineZooStack.DocsUrl = https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/docs
 ```
 
-Use the `OnlineZooApiUrl` as your backend API endpoint.
+Use the `OnlineZooApiUrl` as your backend API endpoint and `DocsUrl` for Swagger UI.
 
 ## 📖 API Documentation
 
@@ -98,6 +99,8 @@ https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/
 | GET | `/pets/{id}` | No | Yes (25%) | Pet detail with coordinates |
 | GET | `/feedback` | No | Yes (25%) | All 24 feedback items |
 | GET | `/cameras` | No | Yes (25%) | All 28 camera entries |
+| GET | `/docs` | No | No | Swagger UI |
+| GET | `/docs/openapi.json` | No | No | OpenAPI spec |
 | POST | `/auth/register` | No | No | Register user, return JWT |
 | POST | `/auth/login` | No | No | Login with hardcoded users |
 | GET | `/auth/profile` | Required | No | Decode JWT, return user |
