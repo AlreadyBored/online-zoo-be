@@ -36,7 +36,6 @@ export class OnlineZooStack extends cdk.Stack {
         name: 'login',
         type: dynamodb.AttributeType.STRING,
       },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 

@@ -1,32 +1,31 @@
 import { handler } from './handler';
 import { createMockEvent } from '../../lib/test-helpers';
-import { getUserByLogin } from '../../lib/user-store';
-import { verifyPassword } from '../../lib/password-utils';
+import { hashPassword } from '../../lib/password-utils';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { mockClient } from 'aws-sdk-client-mock';
 
-jest.mock('../../lib/user-store', () => ({
-  getUserByLogin: jest.fn(),
-}));
-
-jest.mock('../../lib/password-utils', () => ({
-  verifyPassword: jest.fn(),
-}));
-
-const mockGetUserByLogin = getUserByLogin as jest.MockedFunction<typeof getUserByLogin>;
-const mockVerifyPassword = verifyPassword as jest.MockedFunction<typeof verifyPassword>;
+const ddbMock = mockClient(DynamoDBDocumentClient);
 
 describe('auth-login handler', () => {
   beforeEach(() => {
-    mockGetUserByLogin.mockResolvedValue({
-      login: 'admin',
-      name: 'Admin User',
-      email: 'admin@zoo.com',
-      passwordHash: 'salt:hash',
-      createdAt: '2026-01-01T00:00:00.000Z',
-    });
-    mockVerifyPassword.mockResolvedValue(true);
+    ddbMock.reset();
   });
 
   it('should login with valid credentials', async () => {
+    const passwordHash = await hashPassword('admin!1');
+    ddbMock.on(GetCommand, {
+      TableName: process.env.USERS_TABLE_NAME,
+      Key: { login: 'admin' },
+    }).resolves({
+      Item: {
+        login: 'admin',
+        name: 'Admin User',
+        email: 'admin@zoo.com',
+        passwordHash,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+
     const event = createMockEvent({
       httpMethod: 'POST',
       path: '/auth/login',
@@ -35,11 +34,11 @@ describe('auth-login handler', () => {
         password: 'admin!1',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(200);
-    
+
     const body = JSON.parse(response.body);
     expect(body.message).toBe('Login successful');
     expect(body.data).toHaveProperty('access_token');
@@ -47,8 +46,11 @@ describe('auth-login handler', () => {
     expect(body.data.user).toHaveProperty('login', 'admin');
     expect(body.data.user).toHaveProperty('name');
     expect(body.data.user).toHaveProperty('email');
-    expect(mockGetUserByLogin).toHaveBeenCalledWith('admin');
-    expect(mockVerifyPassword).toHaveBeenCalledWith('admin!1', 'salt:hash');
+
+    expect(ddbMock).toHaveReceivedCommandWith(GetCommand, {
+      TableName: process.env.USERS_TABLE_NAME,
+      Key: { login: 'admin' },
+    });
   });
 
   it('should return 400 when request body is missing', async () => {
@@ -56,9 +58,9 @@ describe('auth-login handler', () => {
       httpMethod: 'POST',
       path: '/auth/login',
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Request body is required');
@@ -72,9 +74,9 @@ describe('auth-login handler', () => {
         password: 'admin!1',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('login');
@@ -89,9 +91,9 @@ describe('auth-login handler', () => {
         login: 'admin',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('password');
@@ -99,7 +101,7 @@ describe('auth-login handler', () => {
   });
 
   it('should return 401 for incorrect login', async () => {
-    mockGetUserByLogin.mockResolvedValue(null);
+    ddbMock.on(GetCommand).resolves({});
 
     const event = createMockEvent({
       httpMethod: 'POST',
@@ -109,16 +111,25 @@ describe('auth-login handler', () => {
         password: 'admin!1',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Incorrect login or password');
   });
 
   it('should return 401 for incorrect password', async () => {
-    mockVerifyPassword.mockResolvedValue(false);
+    const passwordHash = await hashPassword('admin!1');
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        login: 'admin',
+        name: 'Admin User',
+        email: 'admin@zoo.com',
+        passwordHash,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
 
     const event = createMockEvent({
       httpMethod: 'POST',
@@ -128,15 +139,26 @@ describe('auth-login handler', () => {
         password: 'wrongpassword',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Incorrect login or password');
   });
 
   it('should have CORS headers', async () => {
+    const passwordHash = await hashPassword('admin!1');
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        login: 'admin',
+        name: 'Admin User',
+        email: 'admin@zoo.com',
+        passwordHash,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    });
+
     const event = createMockEvent({
       httpMethod: 'POST',
       path: '/auth/login',
@@ -145,9 +167,9 @@ describe('auth-login handler', () => {
         password: 'admin!1',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.headers).toHaveProperty('Access-Control-Allow-Origin', '*');
   });
 });

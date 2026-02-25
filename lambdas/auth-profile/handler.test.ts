@@ -1,22 +1,22 @@
 import { handler } from './handler';
 import { createMockEvent } from '../../lib/test-helpers';
 import { signToken } from '../../lib/auth-utils';
-import { getUserByLogin } from '../../lib/user-store';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
+import { mockClient } from 'aws-sdk-client-mock';
 
-jest.mock('../../lib/user-store', () => ({
-  getUserByLogin: jest.fn(),
-}));
-
-const mockGetUserByLogin = getUserByLogin as jest.MockedFunction<typeof getUserByLogin>;
+const ddbMock = mockClient(DynamoDBDocumentClient);
 
 describe('auth-profile handler', () => {
   beforeEach(() => {
-    mockGetUserByLogin.mockResolvedValue({
-      login: 'testuser',
-      name: 'Test User',
-      email: 'test@example.com',
-      passwordHash: 'salt:hash',
-      createdAt: '2026-01-01T00:00:00.000Z',
+    ddbMock.reset();
+    ddbMock.on(GetCommand).resolves({
+      Item: {
+        login: 'testuser',
+        name: 'Test User',
+        email: 'test@example.com',
+        passwordHash: 'salt:hash',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
     });
   });
 
@@ -26,7 +26,7 @@ describe('auth-profile handler', () => {
       name: 'Test User',
       email: 'test@example.com',
     });
-    
+
     const event = createMockEvent({
       httpMethod: 'GET',
       path: '/auth/profile',
@@ -34,16 +34,20 @@ describe('auth-profile handler', () => {
         Authorization: `Bearer ${token}`,
       },
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(200);
-    
+
     const body = JSON.parse(response.body);
     expect(body.data).toHaveProperty('login', 'testuser');
     expect(body.data).toHaveProperty('name', 'Test User');
     expect(body.data).toHaveProperty('email', 'test@example.com');
-    expect(mockGetUserByLogin).toHaveBeenCalledWith('testuser');
+
+    expect(ddbMock).toHaveReceivedCommandWith(GetCommand, {
+      TableName: process.env.USERS_TABLE_NAME,
+      Key: { login: 'testuser' },
+    });
   });
 
   it('should return 401 when Authorization header is missing', async () => {
@@ -51,9 +55,9 @@ describe('auth-profile handler', () => {
       httpMethod: 'GET',
       path: '/auth/profile',
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Unauthorized: Missing or invalid token');
@@ -67,9 +71,9 @@ describe('auth-profile handler', () => {
         Authorization: 'Bearer invalid.token.here',
       },
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Unauthorized: Invalid or expired token');
@@ -81,7 +85,7 @@ describe('auth-profile handler', () => {
       name: 'Test User',
       email: 'test@example.com',
     });
-    
+
     const event = createMockEvent({
       httpMethod: 'GET',
       path: '/auth/profile',
@@ -89,9 +93,9 @@ describe('auth-profile handler', () => {
         Authorization: token,
       },
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Unauthorized: Missing or invalid token');
@@ -103,7 +107,7 @@ describe('auth-profile handler', () => {
       name: 'Test User',
       email: 'test@example.com',
     });
-    
+
     const event = createMockEvent({
       httpMethod: 'GET',
       path: '/auth/profile',
@@ -111,17 +115,18 @@ describe('auth-profile handler', () => {
         authorization: `Bearer ${token}`,
       },
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(200);
-    
+
     const body = JSON.parse(response.body);
     expect(body.data).toHaveProperty('login', 'testuser');
   });
 
   it('should return 401 when user from token does not exist in database', async () => {
-    mockGetUserByLogin.mockResolvedValue(null);
+    ddbMock.on(GetCommand).resolves({});
+
     const token = signToken({
       login: 'testuser',
       name: 'Test User',
@@ -174,7 +179,7 @@ describe('auth-profile handler', () => {
       name: 'Test User',
       email: 'test@example.com',
     });
-    
+
     const event = createMockEvent({
       httpMethod: 'GET',
       path: '/auth/profile',
@@ -182,9 +187,9 @@ describe('auth-profile handler', () => {
         Authorization: `Bearer ${token}`,
       },
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.headers).toHaveProperty('Access-Control-Allow-Origin', '*');
   });
 });

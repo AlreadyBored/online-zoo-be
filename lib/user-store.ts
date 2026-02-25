@@ -1,3 +1,6 @@
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+
 export interface StoredUser {
   login: string;
   name: string;
@@ -6,61 +9,30 @@ export interface StoredUser {
   createdAt: string;
 }
 
-type DynamoModules = {
-  DynamoDBClient: new (config?: Record<string, unknown>) => unknown;
-  DynamoDBDocumentClient: { from: (client: unknown) => DynamoDocClient };
-  GetCommand: new (input: Record<string, unknown>) => unknown;
-  PutCommand: new (input: Record<string, unknown>) => unknown;
-};
-
-type DynamoDocClient = {
-  send: (command: unknown) => Promise<Record<string, unknown>>;
-};
-
-const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME;
-
-let clientPromise: Promise<{
-  docClient: DynamoDocClient;
-  modules: DynamoModules;
-}> | null = null;
-
 function ensureTableName(): string {
-  if (!USERS_TABLE_NAME) {
+  const tableName = process.env.USERS_TABLE_NAME;
+  if (!tableName) {
     throw new Error('USERS_TABLE_NAME is not configured');
   }
 
-  return USERS_TABLE_NAME;
+  return tableName;
 }
 
-async function getDynamoClient() {
-  if (!clientPromise) {
-    clientPromise = (async () => {
-      const dynamoClientModule = require('@aws-sdk/client-dynamodb');
-      const dynamoDocumentModule = require('@aws-sdk/lib-dynamodb');
+let docClient: DynamoDBDocumentClient | null = null;
 
-      const modules: DynamoModules = {
-        DynamoDBClient: dynamoClientModule.DynamoDBClient,
-        DynamoDBDocumentClient: dynamoDocumentModule.DynamoDBDocumentClient,
-        GetCommand: dynamoDocumentModule.GetCommand,
-        PutCommand: dynamoDocumentModule.PutCommand,
-      };
-
-      const client = new modules.DynamoDBClient({});
-      return {
-        docClient: modules.DynamoDBDocumentClient.from(client),
-        modules,
-      };
-    })();
+function getDocClient(): DynamoDBDocumentClient {
+  if (!docClient) {
+    const dynamoClient = new DynamoDBClient({});
+    docClient = DynamoDBDocumentClient.from(dynamoClient);
   }
 
-  return clientPromise;
+  return docClient;
 }
 
 export async function getUserByLogin(login: string): Promise<StoredUser | null> {
   const tableName = ensureTableName();
-  const { docClient, modules } = await getDynamoClient();
-  const result = await docClient.send(
-    new modules.GetCommand({
+  const result = await getDocClient().send(
+    new GetCommand({
       TableName: tableName,
       Key: { login },
     }),
@@ -71,11 +43,10 @@ export async function getUserByLogin(login: string): Promise<StoredUser | null> 
 
 export async function createUser(user: StoredUser): Promise<boolean> {
   const tableName = ensureTableName();
-  const { docClient, modules } = await getDynamoClient();
 
   try {
-    await docClient.send(
-      new modules.PutCommand({
+    await getDocClient().send(
+      new PutCommand({
         TableName: tableName,
         Item: user,
         ConditionExpression: 'attribute_not_exists(login)',
