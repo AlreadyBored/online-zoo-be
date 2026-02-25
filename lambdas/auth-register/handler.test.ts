@@ -1,7 +1,16 @@
-import { handler } from './handler';
 import { createMockEvent } from '../../lib/test-helpers';
+import { handler } from './handler';
+import { DynamoDBDocumentClient, PutCommand } from '@aws-sdk/lib-dynamodb';
+import { mockClient } from 'aws-sdk-client-mock';
+
+const ddbMock = mockClient(DynamoDBDocumentClient);
 
 describe('auth-register handler', () => {
+  beforeEach(() => {
+    ddbMock.reset();
+    ddbMock.on(PutCommand).resolves({});
+  });
+
   it('should register user with valid data', async () => {
     const event = createMockEvent({
       httpMethod: 'POST',
@@ -13,11 +22,11 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(201);
-    
+
     const body = JSON.parse(response.body);
     expect(body.message).toBe('User registered successfully');
     expect(body.data).toHaveProperty('access_token');
@@ -27,6 +36,41 @@ describe('auth-register handler', () => {
       name: 'John Doe',
       email: 'john@example.com',
     });
+
+    expect(ddbMock).toHaveReceivedCommandWith(PutCommand, {
+      TableName: process.env.USERS_TABLE_NAME,
+      Item: expect.objectContaining({
+        login: 'johndoe',
+        name: 'John Doe',
+        email: 'john@example.com',
+        passwordHash: expect.any(String),
+      }),
+      ConditionExpression: 'attribute_not_exists(login)',
+    });
+  });
+
+  it('should return 409 when user already exists', async () => {
+    const conflictError = Object.assign(new Error('User exists'), {
+      name: 'ConditionalCheckFailedException',
+    });
+    ddbMock.on(PutCommand).rejects(conflictError);
+
+    const event = createMockEvent({
+      httpMethod: 'POST',
+      path: '/auth/register',
+      body: JSON.stringify({
+        login: 'johndoe',
+        password: 'password!123',
+        name: 'John Doe',
+        email: 'john@example.com',
+      }),
+    });
+
+    const response = await handler(event);
+
+    expect(response.statusCode).toBe(409);
+    const body = JSON.parse(response.body);
+    expect(body.error).toBe('User already exists');
   });
 
   it('should return 400 when request body is missing', async () => {
@@ -34,9 +78,9 @@ describe('auth-register handler', () => {
       httpMethod: 'POST',
       path: '/auth/register',
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toBe('Request body is required');
@@ -51,9 +95,9 @@ describe('auth-register handler', () => {
         password: 'password!123',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('name');
@@ -71,9 +115,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('Login must be at least 3 characters');
@@ -90,9 +134,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('start with a letter');
@@ -109,9 +153,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('only English letters');
@@ -128,9 +172,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('Password must be at least 6 characters');
@@ -147,9 +191,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('contain at least 1 special character');
@@ -166,9 +210,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('Name must be at least 3 characters');
@@ -185,9 +229,9 @@ describe('auth-register handler', () => {
         email: 'invalid-email',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.error).toContain('Invalid email format');
@@ -204,9 +248,9 @@ describe('auth-register handler', () => {
         email: 'john@example.com',
       }),
     });
-    
+
     const response = await handler(event);
-    
+
     expect(response.headers).toHaveProperty('Access-Control-Allow-Origin', '*');
   });
 });

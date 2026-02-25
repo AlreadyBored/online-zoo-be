@@ -3,6 +3,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/lambdas', '<rootDir>/lib'],
   testMatch: ['**/*.test.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverageFrom: [
     'lambdas/**/*.ts',
     'lib/**/*.ts',
@@ -14,5 +15,5 @@ module.exports = {
     '!lib/**/test-helpers.ts',
     '!lib/data/**'
   ],
-  setupFiles: ['<rootDir>/jest.setup.js']
+  setupFilesAfterEnv: ['<rootDir>/jest.setup.ts']
 };
