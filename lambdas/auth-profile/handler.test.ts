@@ -1,8 +1,25 @@
 import { handler } from './handler';
 import { createMockEvent } from '../../lib/test-helpers';
 import { signToken } from '../../lib/auth-utils';
+import { getUserByLogin } from '../../lib/user-store';
+
+jest.mock('../../lib/user-store', () => ({
+  getUserByLogin: jest.fn(),
+}));
+
+const mockGetUserByLogin = getUserByLogin as jest.MockedFunction<typeof getUserByLogin>;
 
 describe('auth-profile handler', () => {
+  beforeEach(() => {
+    mockGetUserByLogin.mockResolvedValue({
+      login: 'testuser',
+      name: 'Test User',
+      email: 'test@example.com',
+      passwordHash: 'salt:hash',
+      createdAt: '2026-01-01T00:00:00.000Z',
+    });
+  });
+
   it('should return user profile with valid token', async () => {
     const token = signToken({
       login: 'testuser',
@@ -26,6 +43,7 @@ describe('auth-profile handler', () => {
     expect(body.data).toHaveProperty('login', 'testuser');
     expect(body.data).toHaveProperty('name', 'Test User');
     expect(body.data).toHaveProperty('email', 'test@example.com');
+    expect(mockGetUserByLogin).toHaveBeenCalledWith('testuser');
   });
 
   it('should return 401 when Authorization header is missing', async () => {
@@ -100,6 +118,54 @@ describe('auth-profile handler', () => {
     
     const body = JSON.parse(response.body);
     expect(body.data).toHaveProperty('login', 'testuser');
+  });
+
+  it('should return 401 when user from token does not exist in database', async () => {
+    mockGetUserByLogin.mockResolvedValue(null);
+    const token = signToken({
+      login: 'testuser',
+      name: 'Test User',
+      email: 'test@example.com',
+    });
+
+    const event = createMockEvent({
+      httpMethod: 'GET',
+      path: '/auth/profile',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const response = await handler(event);
+
+    expect(response.statusCode).toBe(401);
+    const body = JSON.parse(response.body);
+    expect(body.error).toBe('Unauthorized: User does not exist');
+  });
+
+  it('should return 403 when token user differs from requested user', async () => {
+    const token = signToken({
+      login: 'testuser',
+      name: 'Test User',
+      email: 'test@example.com',
+    });
+
+    const event = createMockEvent({
+      httpMethod: 'GET',
+      path: '/auth/profile',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      queryStringParameters: {
+        login: 'otheruser',
+      },
+    });
+
+    const response = await handler(event);
+
+    expect(response.statusCode).toBe(403);
+    const body = JSON.parse(response.body);
+    expect(body.error).toBe('Forbidden: Token does not belong to requested user');
   });
 
   it('should have CORS headers', async () => {

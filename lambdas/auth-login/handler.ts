@@ -1,21 +1,19 @@
 import { APIGatewayProxyResult } from 'aws-lambda';
 import { successResponse, errorResponse } from '../../lib/response';
 import { signToken } from '../../lib/auth-utils';
-import { MOCK_USERS } from '../../lib/data/users';
 import { loginSchema, LoginInput } from '../../lib/validation-schemas';
 import { withValidation, ValidatedEvent } from '../../lib/validation-middleware';
+import { getUserByLogin } from '../../lib/user-store';
+import { verifyPassword } from '../../lib/password-utils';
 
 async function loginHandler(event: ValidatedEvent<LoginInput>): Promise<APIGatewayProxyResult> {
   const { login, password } = event.validatedBody!;
+  const user = await getUserByLogin(login);
 
-  // Find user in mock database
-  const user = MOCK_USERS.find((u) => u.login === login && u.password === password);
-
-  if (!user) {
+  if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return errorResponse(401, 'Incorrect login or password');
   }
 
-  // Create JWT
   const token = signToken({ login: user.login, name: user.name, email: user.email });
 
   return successResponse(200, {

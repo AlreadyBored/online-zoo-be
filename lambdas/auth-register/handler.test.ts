@@ -1,7 +1,25 @@
 import { handler } from './handler';
 import { createMockEvent } from '../../lib/test-helpers';
+import { createUser } from '../../lib/user-store';
+import { hashPassword } from '../../lib/password-utils';
+
+jest.mock('../../lib/user-store', () => ({
+  createUser: jest.fn(),
+}));
+
+jest.mock('../../lib/password-utils', () => ({
+  hashPassword: jest.fn(),
+}));
+
+const mockCreateUser = createUser as jest.MockedFunction<typeof createUser>;
+const mockHashPassword = hashPassword as jest.MockedFunction<typeof hashPassword>;
 
 describe('auth-register handler', () => {
+  beforeEach(() => {
+    mockCreateUser.mockResolvedValue(true);
+    mockHashPassword.mockResolvedValue('salt:hashed-password');
+  });
+
   it('should register user with valid data', async () => {
     const event = createMockEvent({
       httpMethod: 'POST',
@@ -27,6 +45,29 @@ describe('auth-register handler', () => {
       name: 'John Doe',
       email: 'john@example.com',
     });
+    expect(mockHashPassword).toHaveBeenCalledWith('password!123');
+    expect(mockCreateUser).toHaveBeenCalledTimes(1);
+  });
+
+  it('should return 409 when user already exists', async () => {
+    mockCreateUser.mockResolvedValue(false);
+
+    const event = createMockEvent({
+      httpMethod: 'POST',
+      path: '/auth/register',
+      body: JSON.stringify({
+        login: 'johndoe',
+        password: 'password!123',
+        name: 'John Doe',
+        email: 'john@example.com',
+      }),
+    });
+
+    const response = await handler(event);
+
+    expect(response.statusCode).toBe(409);
+    const body = JSON.parse(response.body);
+    expect(body.error).toBe('User already exists');
   });
 
   it('should return 400 when request body is missing', async () => {

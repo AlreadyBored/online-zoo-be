@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -28,6 +29,16 @@ export class OnlineZooStack extends cdk.Stack {
         forceDockerBundling: false, // Use local bundling (esbuild) instead of Docker
       },
     };
+
+    const usersTable = new dynamodb.Table(this, 'UsersTable', {
+      tableName: 'online-zoo-users',
+      partitionKey: {
+        name: 'login',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     // API Gateway with CORS enabled
     const api = new apigateway.RestApi(this, 'OnlineZooApi', {
@@ -81,6 +92,10 @@ export class OnlineZooStack extends cdk.Stack {
       entry: path.join(__dirname, '../lambdas/auth-register/handler.ts'),
       handler: 'handler',
       functionName: 'online-zoo-auth-register',
+      environment: {
+        ...lambdaEnvironment,
+        USERS_TABLE_NAME: usersTable.tableName,
+      },
     });
 
     const authLoginLambda = new lambdaNodejs.NodejsFunction(this, 'AuthLoginLambda', {
@@ -88,6 +103,10 @@ export class OnlineZooStack extends cdk.Stack {
       entry: path.join(__dirname, '../lambdas/auth-login/handler.ts'),
       handler: 'handler',
       functionName: 'online-zoo-auth-login',
+      environment: {
+        ...lambdaEnvironment,
+        USERS_TABLE_NAME: usersTable.tableName,
+      },
     });
 
     const authProfileLambda = new lambdaNodejs.NodejsFunction(this, 'AuthProfileLambda', {
@@ -95,7 +114,15 @@ export class OnlineZooStack extends cdk.Stack {
       entry: path.join(__dirname, '../lambdas/auth-profile/handler.ts'),
       handler: 'handler',
       functionName: 'online-zoo-auth-profile',
+      environment: {
+        ...lambdaEnvironment,
+        USERS_TABLE_NAME: usersTable.tableName,
+      },
     });
+
+    usersTable.grantReadWriteData(authRegisterLambda);
+    usersTable.grantReadData(authLoginLambda);
+    usersTable.grantReadData(authProfileLambda);
 
     const donateLambda = new lambdaNodejs.NodejsFunction(this, 'DonateLambda', {
       ...commonLambdaProps,
