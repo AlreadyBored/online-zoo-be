@@ -4,17 +4,20 @@ Serverless backend for the **Online Zoo** student assignment, built with **AWS L
 
 ## 🚀 Features
 
-- **9 Lambda Functions** - Pure Lambda handlers (no frameworks)
+- **10 Lambda Functions** - Pure Lambda handlers (no frameworks)
 - **REST API** - API Gateway with CORS support
 - **JWT Authentication** - Stateless auth with Bearer tokens
 - **Mock Data** - 28 pets, 24 feedback items, 28 cameras (all hardcoded)
+- **DynamoDB User Storage** - User registration and login backed by DynamoDB
+- **Input Validation** - Request body and path parameter validation with Zod
+- **Password Hashing** - Passwords hashed with scrypt (never stored in plaintext)
 - **Error Simulation** - Configurable 25% random error rate for frontend testing
 - **Local Testing** - Test all endpoints before deployment
 - **Infrastructure as Code** - Fully defined with AWS CDK
 
 ## 📋 Prerequisites
 
-- **Node.js** 24.14.0+
+- **Node.js** 24.0.0+
 - **AWS CLI** configured with credentials
 - **AWS CDK** 2.x installed globally or via npx
 
@@ -43,7 +46,7 @@ npm run test:watch
 npm run test:coverage
 ```
 
-**Test Suite**: ✅ 12 test files with comprehensive coverage (3 utilities + 9 handlers)
+**Test Suite**: ✅ 13 test files with comprehensive coverage (4 utilities + 9 handlers)
 
 ## 📦 Deployment
 
@@ -75,12 +78,12 @@ After deployment, CDK will output:
 
 ```
 Outputs:
-OnlineZooStack.OnlineZooApiUrl = https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/
-OnlineZooStack.OnlineZooApiId = xxxxxxxx
+OnlineZooStack.ApiUrl = https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/
+OnlineZooStack.ApiId = xxxxxxxx
 OnlineZooStack.DocsUrl = https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/docs
 ```
 
-Use the `OnlineZooApiUrl` as your backend API endpoint and `DocsUrl` for Swagger UI.
+Use the `ApiUrl` as your backend API endpoint and `DocsUrl` for Swagger UI.
 
 ## 📖 API Documentation
 
@@ -102,7 +105,7 @@ https://xxxxxxxx.execute-api.us-east-1.amazonaws.com/prod/
 | GET | `/docs` | No | No | Swagger UI |
 | GET | `/docs/openapi.json` | No | No | OpenAPI spec |
 | POST | `/auth/register` | No | No | Register user, return JWT |
-| POST | `/auth/login` | No | No | Login with hardcoded users |
+| POST | `/auth/login` | No | No | Login, return JWT |
 | GET | `/auth/profile` | Required | No | Decode JWT, return user |
 | POST | `/donations` | Optional | Yes (25%) | Accept donation |
 
@@ -125,6 +128,8 @@ curl https://api-url/prod/auth/profile \
 - `admin` / `admin!1`
 - `john` / `john!1`
 - `test` / `test!1`
+
+> **Note**: These users exist in the mock data file (`lib/data/users.ts`) for reference, but actual authentication is backed by DynamoDB. Register users via `POST /auth/register` before logging in.
 
 ### Example Requests
 
@@ -224,24 +229,9 @@ Response:
 ```
 online-zoo/
 ├── cdk/
-│   ├── stack.ts                   # CDK stack (9 Lambdas + API Gateway)
+│   ├── stack.ts                   # CDK stack (10 Lambdas + API Gateway + DynamoDB)
 │   └── deploy.ts                  # CDK app entry point
 ├── lambdas/
-│   ├── common/
-│   │   ├── types.ts               # TypeScript interfaces
-│   │   ├── response.ts            # CORS response helpers
-│   │   ├── response.test.ts       # Response helpers tests
-│   │   ├── error-simulation.ts    # 25% error probability
-│   │   ├── error-simulation.test.ts # Error simulation tests
-│   │   ├── auth-utils.ts          # JWT sign/verify/extract
-│   │   ├── auth-utils.test.ts     # Auth utilities tests
-│   │   ├── test-helpers.ts        # Mock event helpers for tests
-│   │   └── data/
-│   │       ├── pets.ts            # 28 pets (light)
-│   │       ├── details.ts         # 28 pet details (full)
-│   │       ├── feedback.ts        # 24 feedback items
-│   │       ├── cameras.ts         # 28 camera entries
-│   │       └── users.ts           # 3 hardcoded users
 │   ├── api-info/
 │   │   ├── handler.ts             # GET /
 │   │   └── handler.test.ts
@@ -266,11 +256,33 @@ online-zoo/
 │   ├── auth-profile/
 │   │   ├── handler.ts             # GET /auth/profile
 │   │   └── handler.test.ts
-│   └── donate/
-│       ├── handler.ts             # POST /donations
-│       └── handler.test.ts
+│   ├── donate/
+│   │   ├── handler.ts             # POST /donations
+│   │   └── handler.test.ts
+│   └── docs/
+│       └── handler.ts             # GET /docs, GET /docs/openapi.json
+├── lib/
+│   ├── types.ts                   # TypeScript interfaces
+│   ├── response.ts                # CORS response helpers
+│   ├── response.test.ts           # Response helpers tests
+│   ├── error-simulation.ts        # 25% error probability
+│   ├── error-simulation.test.ts   # Error simulation tests
+│   ├── auth-utils.ts              # JWT sign/verify/extract
+│   ├── auth-utils.test.ts         # Auth utilities tests
+│   ├── password-utils.ts          # scrypt password hash/verify
+│   ├── user-store.ts              # DynamoDB user persistence
+│   ├── user-store.test.ts         # User store tests
+│   ├── validation-schemas.ts      # Zod validation schemas
+│   ├── validation-middleware.ts   # Request validation middleware
+│   ├── test-helpers.ts            # Mock event helpers for tests
+│   └── data/
+│       ├── pets.ts                # 28 pets (light)
+│       ├── details.ts             # 28 pet details (full)
+│       ├── feedback.ts            # 24 feedback items
+│       ├── cameras.ts             # 28 camera entries
+│       └── users.ts               # Sample mock users (reference only)
 ├── jest.config.js                 # Jest configuration
-├── jest.setup.js                  # Jest environment setup
+├── jest.setup.ts                  # Jest environment setup
 ├── package.json
 ├── tsconfig.json
 └── README.md                      # This file
@@ -284,9 +296,10 @@ Set in `cdk/stack.ts`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `JWT_SECRET` | `online-zoo-super-secret-key-2024` | JWT signing secret |
+| `JWT_SECRET` | `online-zoo-secret-key-2026` | JWT signing secret |
 | `JWT_EXPIRY` | `24h` | Token expiration time |
 | `TEST_ERROR_PROBABILITY` | `0.25` | Error simulation rate (0.0-1.0) |
+| `USERS_TABLE_NAME` | *(set by CDK)* | DynamoDB table name for users |
 
 ### Customization
 
@@ -300,15 +313,15 @@ environment: {
 }
 ```
 
-**Add new users**: Edit `lambdas/common/data/users.ts`:
+**Add new users**: Register users via `POST /auth/register` — users are persisted in DynamoDB:
 
-```typescript
-export const MOCK_USERS: MockUser[] = [
-  { login: 'newuser', password: 'pass!123', name: 'New User', email: 'new@zoo.com' },
-];
+```bash
+curl -X POST https://api-url/prod/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"login":"newuser","password":"pass!123","name":"New User","email":"new@zoo.com"}'
 ```
 
-**Modify pets**: Edit data files in `lambdas/common/data/`:
+**Modify pets**: Edit data files in `lib/data/`:
 - `pets.ts` - Light pet list (for GET /pets)
 - `details.ts` - Full pet details (for GET /pets/{id})
 - `cameras.ts` - Camera descriptions
@@ -317,7 +330,7 @@ export const MOCK_USERS: MockUser[] = [
 ## 🔒 Security Notes
 
 - **JWT tokens** are stateless (no database/session storage)
-- **Passwords** are compared in plaintext (acceptable for mock data)
+- **Passwords** are hashed with scrypt before storage (never stored in plaintext)
 - **CORS** is open to all origins (`*`) - tighten for production
 - **Rate limiting** not implemented - add via API Gateway if needed
 - **API key authentication** not enabled - consider for production
@@ -369,12 +382,12 @@ nvm use 24.14.0
 
 This implementation is based on patterns from:
 
-1. **shop-be** (`/Users/Maksim_Shylau/JS/shop-be/`)
+1. **shop-be**
    - Endpoint patterns
    - Error simulation strategy
    - Response format
 
-2. **secret-santa/server** (`/Users/Maksim_Shylau/JS/secret-santa/server/`)
+2. **secret-santa/server**
    - CDK + Lambda architecture
    - `NodejsFunction` bundling
    - API Gateway setup
